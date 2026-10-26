@@ -69,6 +69,9 @@ public class PlayerController : MonoBehaviour
         lives.text = "Lives: " + livescount;
         rb = GetComponent<Rigidbody>();
         audioSource = GetComponent<AudioSource>();
+        if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake = false;
+        audioSource.loop = false;
         if (portal != null) portal.SetActive(false);
         dashText.text = "Dashes: " + dashesLeft;
         lives.text = "Lives: " + livescount;
@@ -84,7 +87,19 @@ public class PlayerController : MonoBehaviour
         pauseText.SetActive(false);
 
     }
+    void PlayPickup()
+    {
+        if (audioSource == null || pickupSound == null) return;
+        CancelInvoke(nameof(StopPickup));
+        audioSource.clip = pickupSound;
+        audioSource.Play();
+        Invoke(nameof(StopPickup), 1f);
+    }
 
+    void StopPickup()
+    {
+        audioSource.Stop();
+    }
     // This function is called when a move input is detected.
     void OnMove(InputValue movementValue)
     {
@@ -156,23 +171,12 @@ public class PlayerController : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        // Check if the object the player collided with has the "PickUp" tag.
         if (other.gameObject.CompareTag("Pickup"))
         {
-            if (audioSource != null && pickupSound != null)
-            {
-                audioSource.PlayOneShot(pickupSound);
-            }
+            PlayPickup();
             other.gameObject.SetActive(false);
-            // Deactivate the collided object (making it disappear).
-            other.gameObject.SetActive(false);
-
-            // Increment the count of "PickUp" objects collected.
-            count = count + 1;
-
+            count++;
             OpenDoors();
-
-            // Update the count display.
             SetCountText();
         }
     }
@@ -186,25 +190,18 @@ public class PlayerController : MonoBehaviour
     }
 
 
-
     // Function to update the displayed count of "PickUp" objects collected.
     void SetCountText()
     {
         // Update the count text with the current count.
         countText.text = "Count: " + count.ToString();
-
-        if (door1 != null && count >= 2)
-        {
+        if (portal != null && count >= 7)
             portal.SetActive(true);
-        }
-
         // Check if the count has reached or exceeded the win condition.
         if (count >= 12)
         {
-            // Display the win text.
+            winTextObject.GetComponent<TextMeshProUGUI>().text = "You Win!";
             winTextObject.SetActive(true);
-
-            // Destroy the enemy GameObject.
             Destroy(GameObject.FindGameObjectWithTag("Enemy"));
         }
     }

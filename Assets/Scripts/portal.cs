@@ -1,20 +1,28 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class Portal : MonoBehaviour
 {
     public string sceneName;
+    public TextMeshProUGUI messageText;
+    public int required = 7;
 
     void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (!other.CompareTag("Player")) return;
+
+        PlayerController pc = other.GetComponent<PlayerController>();
+        if (pc == null) return;
+
+        if (pc.Count >= required)
         {
-            PlayerController pc = other.GetComponent<PlayerController>();
-            if (pc != null && pc.Count >= 7)
-            {
-                pc.SaveState();
-                SceneManager.LoadScene(sceneName);
-            }
+            pc.SaveState();
+            SceneManager.LoadScene(sceneName);
         }
+
     }
+
+
+
 }
