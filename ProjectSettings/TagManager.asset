@@ -10,6 +10,7 @@ TagManager:
   - pet
   - door
   - Spinner
+  - portal
   layers:
   - Default
   - TransparentFX

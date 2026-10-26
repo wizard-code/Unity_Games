@@ -6,20 +6,26 @@ using UnityEngine.UIElements;
 public class PlayerController : MonoBehaviour
 {
     public TextMeshProUGUI dashText;
+    public TextMeshProUGUI lives;
+    public GameObject portal;
+    private AudioSource audioSource;
+    public AudioClip pickupSound;
     public float dashSpeed = 20f;
     public float dashTime = 0.15f;
     public int dashesLeft = 3;
+
+    public int livescount = 3;
     private float dashTimer;
     // Rigidbody of the player.
     private Rigidbody rb;
 
     // Variable to keep track of collected "PickUp" objects.
     private int count;
-
+    public int Count => count;
     // Movement along X and Y axes.
     private float movementX;
     private float movementY;
-    private float jumpForce = 4f;
+    private float jumpSpeed = 4f;
     private Boolean isGrounded = true;
 
     // Speed at which the player moves.
@@ -35,16 +41,40 @@ public class PlayerController : MonoBehaviour
     public GameObject door1;
     public float killY = -10f;
     bool paused;
+    static bool hasSavedState;
+    static int savedDashes, savedLives, savedCount;
 
+    public void SaveState()
+    {
+        hasSavedState = true;
+        savedDashes = dashesLeft;
+        savedLives = livescount;
+        savedCount = count;
+    }
     // Start is called before the first frame update.
     void Start()
     {
+        if (hasSavedState)
+        {
+            dashesLeft = savedDashes;
+            livescount = savedLives;
+            count = savedCount;
+        }
+        else
+        {
+            count = 0;
+        }
+
         dashText.text = "Dashes: " + dashesLeft;
-        // Get and store the Rigidbody component attached to the player.
+        lives.text = "Lives: " + livescount;
         rb = GetComponent<Rigidbody>();
+        audioSource = GetComponent<AudioSource>();
+        if (portal != null) portal.SetActive(false);
+        dashText.text = "Dashes: " + dashesLeft;
+        lives.text = "Lives: " + livescount;
 
         // Initialize count to zero.
-        count = 0;
+       
 
         // Update the count display.
         SetCountText();
@@ -78,7 +108,8 @@ public class PlayerController : MonoBehaviour
 
         if (Keyboard.current.spaceKey.wasPressedThisFrame && isGrounded)
         {
-            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+            Vector3 v = rb.linearVelocity;
+            rb.linearVelocity = new Vector3(v.x, jumpSpeed, v.z);
             isGrounded = false;
         }
 
@@ -91,8 +122,12 @@ public class PlayerController : MonoBehaviour
         }
         if (transform.position.y < killY)
         {
+            LoseLife();
+        }
+        if (livescount <= 0)
+        {
             Destroy(gameObject);
-            winTextObject.gameObject.SetActive(true);
+            winTextObject.SetActive(true);
             winTextObject.GetComponent<TextMeshProUGUI>().text = "You Lose!";
         }
 
@@ -101,19 +136,21 @@ public class PlayerController : MonoBehaviour
     // FixedUpdate is called once per fixed frame-rate frame.
     void FixedUpdate()
     {
-        Vector3 v = rb.linearVelocity;
-        rb.linearVelocity = new Vector3(movementX * speed, v.y, movementY * speed);
+        Vector3 input = new Vector3(movementX, 0f, movementY);
 
-        // Face the direction of movement
-        Vector3 dir = new Vector3(movementX, 0f, movementY);
-        if (dir.sqrMagnitude > 0.01f)
-            transform.rotation = Quaternion.LookRotation(dir);
+        if (input.sqrMagnitude > 0.01f)
+            transform.rotation = Quaternion.LookRotation(input);
+
         if (dashTimer > 0)
         {
             dashTimer -= Time.fixedDeltaTime;
-            rb.linearVelocity = transform.forward * dashSpeed;
+            Vector3 d = transform.forward * dashSpeed;
+            rb.linearVelocity = new Vector3(d.x, rb.linearVelocity.y, d.z);
             return;
         }
+
+        Vector3 move = Vector3.ClampMagnitude(input, 1f) * speed;
+        rb.linearVelocity = new Vector3(move.x, rb.linearVelocity.y, move.z);
     }
 
 
@@ -122,6 +159,11 @@ public class PlayerController : MonoBehaviour
         // Check if the object the player collided with has the "PickUp" tag.
         if (other.gameObject.CompareTag("Pickup"))
         {
+            if (audioSource != null && pickupSound != null)
+            {
+                audioSource.PlayOneShot(pickupSound);
+            }
+            other.gameObject.SetActive(false);
             // Deactivate the collided object (making it disappear).
             other.gameObject.SetActive(false);
 
@@ -136,10 +178,9 @@ public class PlayerController : MonoBehaviour
     }
     void OpenDoors()
     {
-        if (count >= 2)
+        if (door1 != null && count >= 2)
         {
             door1.SetActive(false);
-
         }
 
     }
@@ -152,8 +193,13 @@ public class PlayerController : MonoBehaviour
         // Update the count text with the current count.
         countText.text = "Count: " + count.ToString();
 
+        if (door1 != null && count >= 2)
+        {
+            portal.SetActive(true);
+        }
+
         // Check if the count has reached or exceeded the win condition.
-        if (count >= 7)
+        if (count >= 12)
         {
             // Display the win text.
             winTextObject.SetActive(true);
@@ -162,23 +208,32 @@ public class PlayerController : MonoBehaviour
             Destroy(GameObject.FindGameObjectWithTag("Enemy"));
         }
     }
+    void LoseLife()
+    {
+        livescount--;
+        lives.text = "Lives: " + livescount;
+
+        
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        transform.SetParent(null);              
+        transform.position = new Vector3(0, 1, 0);  
+        dashTimer = 0;
+    }
 
     private void OnCollisionEnter(Collision collision)
     {
         if (collision.gameObject.CompareTag("Enemy"))
         {
-            Destroy(gameObject);
-            winTextObject.gameObject.SetActive(true);
-            winTextObject.GetComponent<TextMeshProUGUI>().text = "You Lose!";
+            LoseLife();
         }
         else
         {
             isGrounded = true;
         }
-        if (collision.gameObject.CompareTag("Spinner")) { 
+        if (collision.gameObject.CompareTag("Spinner"))
             transform.SetParent(collision.transform);
     }
-}
 
 void OnCollisionExit(Collision collision)
 {
