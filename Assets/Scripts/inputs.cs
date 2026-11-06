@@ -198,7 +198,7 @@ public class PlayerController : MonoBehaviour
         if (portal != null && count >= 7)
             portal.SetActive(true);
         // Check if the count has reached or exceeded the win condition.
-        if (count >= 12)
+        if (count >= 13)
         {
             winTextObject.GetComponent<TextMeshProUGUI>().text = "You Win!";
             winTextObject.SetActive(true);
